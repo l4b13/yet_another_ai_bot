@@ -14,6 +14,7 @@ from redis.asyncio import Redis
 from core.config import settings
 
 from core.database import Database
+from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 from middlewares.media_group import AlbumMiddleware
 from middlewares.outer import LoggerMiddleware
@@ -77,6 +78,7 @@ async def main():
         system_llm=system_llm
     )
 
+    dp.include_router(admin_router)
     dp.include_router(user_router)
 
     dp.message.outer_middleware(LoggerMiddleware())

@@ -51,6 +51,12 @@ class User(Base):
         result = await db_session.execute(query)
         return result.scalars().first()
 
+    @classmethod
+    async def get_by_internal_id(
+        cls, db_session: AsyncSession, user_id: int
+    ) -> "User | None":
+        return await db_session.get(cls, user_id)
+
     def update_config(self, data: dict = None, **kwargs):
         if self.config is None:
             self.config = dict(ai_config)

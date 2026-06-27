@@ -15,6 +15,6 @@ class IsAdminFilter(BaseFilter):
         chat_id = update.from_user.id
         async with db.get_session() as db_session:
             user = await User.get_one(db_session, chat_id)
-        if user is not None:
+        if user is not None and user.is_admin:
             return True
         return False

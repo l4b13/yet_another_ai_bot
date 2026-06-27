@@ -277,22 +277,6 @@ async def process_model_callback(
         await state.update_data(ai_menu_id=ai_menu.message_id)
 
 
-@router.message(Command(commands="admin"))
-async def process_admin_command(message: types.Message, db: Database):
-    async with db.get_session() as db_session:
-        user = await ChatService.get_user(db_session, message.chat.id)
-        if user.is_admin:
-            response = Text(
-                "admin"
-            )
-            await message.answer(
-                **response.as_kwargs(),
-                reply_markup=None
-            )
-        else:
-            await message.delete()
-
-
 def split_string_into_chunks(text: str, max_length: int = 2000):
     """
     Split text into chunks of maximum length, preserving word boundaries and \
