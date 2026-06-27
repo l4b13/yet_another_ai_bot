@@ -510,7 +510,12 @@ async def process_message(
             photo_url = task_result.get("photo_url")
             photo_bytes = task_result.get("photo_bytes")
             video_bytes = task_result.get("video_bytes")
-            cap = (reply_plain[:1024] if reply_plain else None) or None
+            media_caption = task_result.get("media_caption")
+            if photo_url or photo_bytes or video_bytes:
+                cap_src = media_caption or user_visible or reply_plain
+                cap = (cap_src[:1024] + "…") if len(cap_src) > 1024 else cap_src
+            else:
+                cap = None
 
             if photo_url:
                 await message.answer_photo(

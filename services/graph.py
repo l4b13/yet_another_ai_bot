@@ -127,6 +127,17 @@ class GraphState(TypedDict, total=False):
     conversation_id: str
     memory_context: str
     route: str
+    media_caption: str
+
+
+def _media_history_text(kind: str, prompt: str) -> str:
+    label = "изображение" if kind == "image" else "видео"
+    return f"[сгенерировано {label}] {prompt.strip()}"
+
+
+def _media_caption(user_text: str, prompt: str, fallback: str) -> str:
+    src = (user_text or "").strip() or prompt.strip() or fallback
+    return (src[:900] + "…") if len(src) > 900 else src
 
 
 def _memory_system_messages(state: GraphState) -> list[SystemMessage]:
@@ -391,10 +402,9 @@ async def generate_image(state: GraphState):
     if err:
         return {"result": AIMessage(content=f"Не удалось создать изображение: {err}")}
 
-    cap_src = user_text or prompt
-    caption = (cap_src[:900] + "…") if len(cap_src) > 900 else cap_src
     out: GraphState = {
-        "result": AIMessage(content=caption or "Изображение готово."),
+        "result": AIMessage(content=_media_history_text("image", prompt)),
+        "media_caption": _media_caption(user_text, prompt, "Изображение готово."),
         "price": float(image_model.price),
     }
     if img_url:
@@ -461,10 +471,9 @@ async def generate_video(state: GraphState):
     if err:
         return {"result": AIMessage(content=f"Не удалось создать видео: {err}")}
 
-    cap_src = user_text or prompt
-    caption = (cap_src[:900] + "…") if len(cap_src) > 900 else cap_src
     return {
-        "result": AIMessage(content=caption or "Видео готово."),
+        "result": AIMessage(content=_media_history_text("video", prompt)),
+        "media_caption": _media_caption(user_text, prompt, "Видео готово."),
         "video_bytes": video_bytes,
         "price": float(video_model.price),
     }
