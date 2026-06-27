@@ -1,4 +1,3 @@
-import json
 from typing import Literal
 
 from aiogram.filters.callback_data import CallbackData
@@ -29,7 +28,7 @@ class AdminUserCBF(CallbackData, prefix="adm_usr"):
 class AdminUserActionCBF(CallbackData, prefix="adm_uact"):
     user_id: int
     page: int
-    action: Literal["info", "balance", "premium", "config"]
+    action: Literal["balance", "premium", "config"]
 
 
 class AdminModelsPageCBF(CallbackData, prefix="adm_mdls"):
@@ -68,13 +67,13 @@ def _user_label(user: User) -> str:
 
 
 def format_main_menu_text() -> str:
-    return "*Админ-панель*\n\nВыберите раздел:"
+    return "Админ-панель\n\nВыберите раздел:"
 
 
 def format_users_list_text(users: list[User], page: int) -> str:
-    lines = [f"*Пользователи* (стр. {page + 1})\n"]
+    lines = [f"Пользователи (стр. {page + 1})\n"]
     if not users:
-        lines.append("_Список пуст_")
+        lines.append("Список пуст")
     else:
         for idx, user in enumerate(users, start=1):
             lines.append(f"{idx}. {_user_label(user)} (id: {user.id})")
@@ -82,23 +81,31 @@ def format_users_list_text(users: list[User], page: int) -> str:
 
 
 def format_user_card_text(user: User) -> str:
-    return f"*Пользователь #{user.id}*\n\nВыберите поле:"
-
-
-def format_user_config_text(user: User) -> str:
-    config_json = json.dumps(user.config or {}, ensure_ascii=False, indent=2)
-    if len(config_json) > 3500:
-        config_json = config_json[:3500] + "\n…"
+    username = f"@{user.username}" if user.username else "—"
+    fullname = user.fullname or "—"
     return (
-        f"*Конфиг пользователя #{user.id}* (только просмотр)\n\n"
-        f"```json\n{config_json}\n```"
+        f"Пользователь #{user.id}\n"
+        f"Username: {username}\n"
+        f"Имя: {fullname}\n"
+        f"chat_id: {user.chat_id}\n\n"
+        "Выберите поле:"
+    )
+
+
+def format_user_config_text(user: User, config: dict[str, str]) -> str:
+    return (
+        f"Конфиг пользователя #{user.id} (только просмотр)\n\n"
+        f"текст: {config['text']}\n"
+        f"изображение: {config['image']}\n"
+        f"видео: {config['video']}\n"
+        f"температура: {config['temperature']}"
     )
 
 
 def format_models_list_text(models: list[AIModel], page: int) -> str:
-    lines = [f"*Модели* (стр. {page + 1})\n"]
+    lines = [f"Модели (стр. {page + 1})\n"]
     if not models:
-        lines.append("_Список пуст_")
+        lines.append("Список пуст")
     else:
         for idx, model in enumerate(models, start=1):
             cat = model.aicategory or "—"
@@ -110,11 +117,11 @@ def format_model_card_text(model: AIModel) -> str:
     access = "premium" if model.premium else "всем"
     cat = model.aicategory or "—"
     return (
-        f"*Модель #{model.id}*\n\n"
-        f"Название: `{model.name}`\n"
-        f"Стоимость: `{model.price}`\n"
-        f"Доступ: `{access}`\n"
-        f"Категория: `{cat}`\n\n"
+        f"Модель #{model.id}\n\n"
+        f"Название: {model.name}\n"
+        f"Стоимость: {model.price}\n"
+        f"Доступ: {access}\n"
+        f"Категория: {cat}\n\n"
         "Выберите поле:"
     )
 
@@ -188,15 +195,7 @@ def get_user_card_kb(user: User, page: int):
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=f"1.1.1 {_user_label(user)}",
-            callback_data=AdminUserActionCBF(
-                user_id=user.id, page=page, action="info"
-            ).pack(),
-        )
-    )
-    builder.row(
-        InlineKeyboardButton(
-            text=f"1.1.2 Баланс: {user.balance}",
+            text=f"Баланс: {user.balance}",
             callback_data=AdminUserActionCBF(
                 user_id=user.id, page=page, action="balance"
             ).pack(),
@@ -204,7 +203,7 @@ def get_user_card_kb(user: User, page: int):
     )
     builder.row(
         InlineKeyboardButton(
-            text=f"1.1.3 Премиум: {premium}",
+            text=f"Премиум: {premium}",
             callback_data=AdminUserActionCBF(
                 user_id=user.id, page=page, action="premium"
             ).pack(),
@@ -212,7 +211,7 @@ def get_user_card_kb(user: User, page: int):
     )
     builder.row(
         InlineKeyboardButton(
-            text="1.1.4 Конфиг",
+            text="Конфиг",
             callback_data=AdminUserActionCBF(
                 user_id=user.id, page=page, action="config"
             ).pack(),

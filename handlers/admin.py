@@ -43,11 +43,14 @@ router = Router()
 router.message.filter(ChatTypeFilter(chat_type=PRIVATE))
 router.callback_query.filter(ChatTypeFilter(chat_type=PRIVATE))
 
+ADMIN_PARSE_MODE = None
+
 
 async def _show_main_menu(message: types.Message):
     await message.answer(
         format_main_menu_text(),
         reply_markup=get_main_menu_kb(),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -55,6 +58,7 @@ async def _edit_main_menu(callback: types.CallbackQuery):
     await callback.message.edit_text(
         format_main_menu_text(),
         reply_markup=get_main_menu_kb(),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -70,6 +74,7 @@ async def _edit_users_page(
         reply_markup=get_users_list_kb(
             users, page, has_prev=has_prev, has_next=has_next
         ),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -85,6 +90,7 @@ async def _edit_user_card(
     await callback.message.edit_text(
         format_user_card_text(user),
         reply_markup=get_user_card_kb(user, page),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -100,6 +106,7 @@ async def _edit_models_page(
         reply_markup=get_models_list_kb(
             models, page, has_prev=has_prev, has_next=has_next
         ),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -115,6 +122,7 @@ async def _edit_model_card(
     await callback.message.edit_text(
         format_model_card_text(model),
         reply_markup=get_model_card_kb(model, page),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -187,17 +195,6 @@ async def admin_user_action(
     action = callback_data.action
     page = callback_data.page
 
-    if action == "info":
-        username = f"@{user.username}" if user.username else "—"
-        fullname = user.fullname or "—"
-        await callback.answer(
-            f"Username: {username}\n"
-            f"Имя: {fullname}\n"
-            f"chat_id: {user.chat_id}",
-            show_alert=True,
-        )
-        return
-
     if action == "premium":
         async with db.get_session() as db_session:
             user = await AdminService.toggle_user_premium(
@@ -208,14 +205,20 @@ async def admin_user_action(
             await callback.message.edit_text(
                 format_user_card_text(user),
                 reply_markup=get_user_card_kb(user, page),
+                parse_mode=ADMIN_PARSE_MODE,
             )
         return
 
     if action == "config":
         await callback.answer()
+        async with db.get_session() as db_session:
+            display_config = await AdminService.config_for_display(
+                db_session, user.config
+            )
         await callback.message.edit_text(
-            format_user_config_text(user),
+            format_user_config_text(user, display_config),
             reply_markup=get_user_config_kb(user, page),
+            parse_mode=ADMIN_PARSE_MODE,
         )
         return
 
@@ -228,10 +231,11 @@ async def admin_user_action(
             menu_message_id=callback.message.message_id,
         )
         await callback.message.edit_text(
-            f"*Пользователь #{user.id}*\n\n"
-            f"Текущий баланс: `{user.balance}`\n"
+            f"Пользователь #{user.id}\n\n"
+            f"Текущий баланс: {user.balance}\n"
             "Введите новое целое число:",
             reply_markup=get_cancel_fsm_kb("user", user.id, page),
+            parse_mode=ADMIN_PARSE_MODE,
         )
 
 
@@ -288,14 +292,16 @@ async def admin_model_action(
             await callback.message.edit_text(
                 format_model_card_text(model),
                 reply_markup=get_model_card_kb(model, page),
+                parse_mode=ADMIN_PARSE_MODE,
             )
         return
 
     if action == "category":
         await callback.answer()
         await callback.message.edit_text(
-            f"*Модель #{model.id}*\n\nВыберите категорию:",
+            f"Модель #{model.id}\n\nВыберите категорию:",
             reply_markup=get_model_category_kb(model, page),
+            parse_mode=ADMIN_PARSE_MODE,
         )
         return
 
@@ -309,20 +315,22 @@ async def admin_model_action(
     if action == "name":
         await state.set_state(AdminStates.edit_model_name)
         await callback.message.edit_text(
-            f"*Модель #{model.id}*\n\n"
-            f"Текущее название: `{model.name}`\n"
+            f"Модель #{model.id}\n\n"
+            f"Текущее название: {model.name}\n"
             "Введите новое название:",
             reply_markup=get_cancel_fsm_kb("model", model.id, page),
+            parse_mode=ADMIN_PARSE_MODE,
         )
         return
 
     if action == "price":
         await state.set_state(AdminStates.edit_model_price)
         await callback.message.edit_text(
-            f"*Модель #{model.id}*\n\n"
-            f"Текущая стоимость: `{model.price}`\n"
+            f"Модель #{model.id}\n\n"
+            f"Текущая стоимость: {model.price}\n"
             "Введите новое число:",
             reply_markup=get_cancel_fsm_kb("model", model.id, page),
+            parse_mode=ADMIN_PARSE_MODE,
         )
 
 
@@ -345,6 +353,7 @@ async def admin_model_category(
     await callback.message.edit_text(
         format_model_card_text(model),
         reply_markup=get_model_card_kb(model, callback_data.page),
+        parse_mode=ADMIN_PARSE_MODE,
     )
 
 
@@ -383,7 +392,7 @@ async def admin_save_user_balance(
     try:
         balance = int(text)
     except ValueError:
-        await message.answer("Введите целое число или нажмите «Отмена».")
+        await message.answer("Введите целое число или нажмите «Отмена».", parse_mode=ADMIN_PARSE_MODE)
         return
 
     async with db.get_session() as db_session:
@@ -392,7 +401,7 @@ async def admin_save_user_balance(
     await state.clear()
 
     if user is None:
-        await message.answer("Пользователь не найден.")
+        await message.answer("Пользователь не найден.", parse_mode=ADMIN_PARSE_MODE)
         return
 
     card_text = format_user_card_text(user)
@@ -404,13 +413,20 @@ async def admin_save_user_balance(
                 chat_id=message.chat.id,
                 message_id=menu_message_id,
                 reply_markup=card_kb,
+                parse_mode=ADMIN_PARSE_MODE,
             )
         except Exception:
-            await message.answer(card_text, reply_markup=card_kb)
+            await message.answer(
+                card_text, reply_markup=card_kb, parse_mode=ADMIN_PARSE_MODE
+            )
     else:
-        await message.answer(card_text, reply_markup=card_kb)
+        await message.answer(
+            card_text, reply_markup=card_kb, parse_mode=ADMIN_PARSE_MODE
+        )
 
-    await message.answer(f"Баланс обновлён: `{balance}`")
+    await message.answer(
+        f"Баланс обновлён: {balance}", parse_mode=ADMIN_PARSE_MODE
+    )
 
 
 @router.message(StateFilter(AdminStates.edit_model_name), IsAdminFilter())
@@ -427,7 +443,7 @@ async def admin_save_model_name(
 
     name = (message.text or "").strip()
     if not name:
-        await message.answer("Название не может быть пустым.")
+        await message.answer("Название не может быть пустым.", parse_mode=ADMIN_PARSE_MODE)
         return
 
     async with db.get_session() as db_session:
@@ -436,7 +452,7 @@ async def admin_save_model_name(
     await state.clear()
 
     if model is None:
-        await message.answer("Модель не найдена.")
+        await message.answer("Модель не найдена.", parse_mode=ADMIN_PARSE_MODE)
         return
 
     card_text = format_model_card_text(model)
@@ -448,13 +464,20 @@ async def admin_save_model_name(
                 chat_id=message.chat.id,
                 message_id=menu_message_id,
                 reply_markup=card_kb,
+                parse_mode=ADMIN_PARSE_MODE,
             )
         except Exception:
-            await message.answer(card_text, reply_markup=card_kb)
+            await message.answer(
+                card_text, reply_markup=card_kb, parse_mode=ADMIN_PARSE_MODE
+            )
     else:
-        await message.answer(card_text, reply_markup=card_kb)
+        await message.answer(
+            card_text, reply_markup=card_kb, parse_mode=ADMIN_PARSE_MODE
+        )
 
-    await message.answer(f"Название обновлено: `{model.name}`")
+    await message.answer(
+        f"Название обновлено: {model.name}", parse_mode=ADMIN_PARSE_MODE
+    )
 
 
 @router.message(StateFilter(AdminStates.edit_model_price), IsAdminFilter())
@@ -473,7 +496,7 @@ async def admin_save_model_price(
     try:
         price = float(text)
     except ValueError:
-        await message.answer("Введите число или нажмите «Отмена».")
+        await message.answer("Введите число или нажмите «Отмена».", parse_mode=ADMIN_PARSE_MODE)
         return
 
     async with db.get_session() as db_session:
@@ -482,7 +505,7 @@ async def admin_save_model_price(
     await state.clear()
 
     if model is None:
-        await message.answer("Модель не найдена.")
+        await message.answer("Модель не найдена.", parse_mode=ADMIN_PARSE_MODE)
         return
 
     card_text = format_model_card_text(model)
@@ -494,10 +517,17 @@ async def admin_save_model_price(
                 chat_id=message.chat.id,
                 message_id=menu_message_id,
                 reply_markup=card_kb,
+                parse_mode=ADMIN_PARSE_MODE,
             )
         except Exception:
-            await message.answer(card_text, reply_markup=card_kb)
+            await message.answer(
+                card_text, reply_markup=card_kb, parse_mode=ADMIN_PARSE_MODE
+            )
     else:
-        await message.answer(card_text, reply_markup=card_kb)
+        await message.answer(
+            card_text, reply_markup=card_kb, parse_mode=ADMIN_PARSE_MODE
+        )
 
-    await message.answer(f"Стоимость обновлена: `{model.price}`")
+    await message.answer(
+        f"Стоимость обновлена: {model.price}", parse_mode=ADMIN_PARSE_MODE
+    )

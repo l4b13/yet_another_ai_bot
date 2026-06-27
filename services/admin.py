@@ -109,6 +109,40 @@ class AdminService:
         return model
 
     @classmethod
+    async def get_models_name_map(
+        cls, db_session: AsyncSession
+    ) -> dict[int, str]:
+        models = await AIModel.get_all(db_session)
+        return {model.id: model.name for model in models}
+
+    @classmethod
+    async def config_for_display(
+        cls, db_session: AsyncSession, config: dict | None
+    ) -> dict[str, str]:
+        cfg = dict(config or {})
+        name_map = await cls.get_models_name_map(db_session)
+
+        def model_name(key: str) -> str:
+            model_id = cfg.get(key)
+            if model_id is None:
+                return "не выбрана"
+            try:
+                mid = int(model_id)
+            except (TypeError, ValueError):
+                return str(model_id)
+            return name_map.get(mid, f"id:{mid} (не найдена)")
+
+        temperature = cfg.get("temperature")
+        temp_display = "—" if temperature is None else str(temperature)
+
+        return {
+            "text": model_name("text_model_id"),
+            "image": model_name("image_model_id"),
+            "video": model_name("video_model_id"),
+            "temperature": temp_display,
+        }
+
+    @classmethod
     async def update_model_category(
         cls, db_session: AsyncSession, model_id: int, category: str
     ) -> AIModel | None:
