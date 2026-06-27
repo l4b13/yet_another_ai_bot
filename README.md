@@ -22,7 +22,7 @@ uv run main.py
 - Linux-сервер (VPS)
 - Docker Engine 24+ и Docker Compose v2
 - Открытый исходящий HTTPS (бот ходит в Telegram и OpenAI-compatible API)
-- ~2 GB RAM (MemPalace при первом запросе скачивает embedding-модель ~80 MB)
+- ~2 GB RAM (MemPalace embedding-модель ~80 MB загружается при старте бота)
 
 ### 2. Подготовка сервера
 
@@ -185,5 +185,5 @@ uv run main.py
 | «Не хватает средств» | Пополните `users.balance` в БД |
 | «Модель не выбрана» | Проверьте `aimodels` и `DEFAULT_*_MODEL_ID` |
 | Видео без реакции на картинку | Проверьте `ffmpeg` в контейнере: `docker compose exec bot ffmpeg -version` |
-| Долгий первый ответ | MemPalace качает embedding-модель; или `MEMPALACE_ENABLED=false` |
+| Долгий старт бота | MemPalace качает embedding-модель при запуске; или `MEMPALACE_ENABLED=false` |
 | Ошибка генерации видео | Модель `sora-2` / `sora-2-pro`, endpoint `/videos` (см. [документацию Sora](https://proxyapi.ru/docs/openai-video-sora)) |

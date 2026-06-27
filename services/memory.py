@@ -37,6 +37,34 @@ class MemoryService:
         return "\n".join(lines)
 
     @classmethod
+    def _warmup_sync(cls) -> None:
+        from mempalace.embedding import (
+            current_model_name,
+            get_embedding_function,
+            probe_dimension,
+        )
+
+        cls._palace_path()
+        model = current_model_name()
+        get_embedding_function()
+        dim = probe_dimension()
+        logger.info(
+            "MemPalace embedding model preloaded (model=%s dim=%s)",
+            model,
+            dim,
+        )
+
+    @classmethod
+    async def warmup(cls) -> None:
+        if not settings.MEMPALACE_ENABLED:
+            logger.info("MemPalace warmup skipped (disabled)")
+            return
+        try:
+            await asyncio.to_thread(cls._warmup_sync)
+        except Exception:
+            logger.exception("MemPalace warmup failed")
+
+    @classmethod
     def _retrieve_sync(cls, chat_id: int, query: str, top_k: int | None) -> str:
         from mempalace.searcher import search_memories
 

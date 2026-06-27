@@ -18,6 +18,7 @@ from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 from middlewares.media_group import AlbumMiddleware
 from middlewares.outer import LoggerMiddleware
+from services.memory import MemoryService
 
 
 logging.basicConfig(
@@ -92,6 +93,7 @@ async def main():
 
     try:
         await db.create_all()
+        await MemoryService.warmup()
         await dp.start_polling(bot, polling_timeout=30)
 
     except Exception as e:
