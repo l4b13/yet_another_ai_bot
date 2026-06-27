@@ -98,7 +98,7 @@ docker compose exec db psql -U postgres -d yaai
 -- пример: добавьте модели с id, совпадающими с DEFAULT_*_MODEL_ID в .env
 INSERT INTO aimodels (id, name, price, premium, aicategory) VALUES
   (2,  'gpt-4o-mini', 1, false, 'text'),
-  (6,  'dall-e-3',      5, false, 'image'),
+  (6,  'gpt-image-2',   5, false, 'image'),
   (11, 'video-model',  10, false, 'video')
 ON CONFLICT (id) DO NOTHING;
 

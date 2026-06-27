@@ -45,44 +45,38 @@ async def request_image(
         base_body["size"] = settings.OPENAI_IMAGE_SIZE
 
     async with httpx.AsyncClient(timeout=timeout) as client:
-        for response_format in ("url", "b64_json"):
-            body = {**base_body, "response_format": response_format}
-            try:
-                r = await client.post(url, json=body, headers=_headers())
-            except httpx.RequestError as e:
-                return None, None, f"Сеть: {e!s}"
+        try:
+            r = await client.post(url, json=base_body, headers=_headers())
+        except httpx.RequestError as e:
+            return None, None, f"Сеть: {e!s}"
 
-            if r.status_code >= 400:
-                err_text = r.text
-                try:
-                    err_text = str(r.json())
-                except Exception:
-                    pass
-                if response_format == "url":
-                    continue
-                return None, None, f"HTTP {r.status_code}: {err_text}"
-
+        if r.status_code >= 400:
+            err_text = r.text
             try:
-                payload = r.json()
+                err_text = str(r.json())
             except Exception:
-                return None, None, "Некорректный JSON от API изображений"
+                pass
+            return None, None, f"HTTP {r.status_code}: {err_text}"
 
-            item = _first_media_item(payload)
-            if not item and isinstance(payload.get("data"), dict):
-                item = payload["data"]
+        try:
+            payload = r.json()
+        except Exception:
+            return None, None, "Некорректный JSON от API изображений"
 
-            if not item:
-                if response_format == "url":
-                    continue
-                return None, None, "Пустой ответ API изображений"
+        item = _first_media_item(payload)
+        if not item and isinstance(payload.get("data"), dict):
+            item = payload["data"]
 
-            if u := item.get("url"):
-                return None, str(u), None
-            if b64 := item.get("b64_json"):
-                try:
-                    return base64.b64decode(b64), None, None
-                except Exception:
-                    return None, None, "Не удалось декодировать b64_json"
+        if not item:
+            return None, None, "Пустой ответ API изображений"
+
+        if u := item.get("url"):
+            return None, str(u), None
+        if b64 := item.get("b64_json"):
+            try:
+                return base64.b64decode(b64), None, None
+            except Exception:
+                return None, None, "Не удалось декодировать b64_json"
 
         return None, None, "API изображений не вернул ни url, ни b64_json"
 
