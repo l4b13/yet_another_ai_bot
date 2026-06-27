@@ -99,7 +99,7 @@ docker compose exec db psql -U postgres -d yaai
 INSERT INTO aimodels (id, name, price, premium, aicategory) VALUES
   (2,  'gpt-4o-mini', 1, false, 'text'),
   (6,  'gpt-image-2',   5, false, 'image'),
-  (11, 'video-model',  10, false, 'video')
+  (11, 'sora-2',       10, false, 'video')
 ON CONFLICT (id) DO NOTHING;
 
 -- стартовый баланс (пример)
@@ -186,4 +186,4 @@ uv run main.py
 | «Модель не выбрана» | Проверьте `aimodels` и `DEFAULT_*_MODEL_ID` |
 | Видео без реакции на картинку | Проверьте `ffmpeg` в контейнере: `docker compose exec bot ffmpeg -version` |
 | Долгий первый ответ | MemPalace качает embedding-модель; или `MEMPALACE_ENABLED=false` |
-| Ошибка генерации видео | Убедитесь, что API поддерживает `OPENAI_VIDEOS_PATH` |
+| Ошибка генерации видео | Модель `sora-2` / `sora-2-pro`, endpoint `/videos` (см. [документацию Sora](https://proxyapi.ru/docs/openai-video-sora)) |

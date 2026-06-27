@@ -32,17 +32,17 @@ if sys.platform.startswith("win") or os.name == "nt":
 
 async def set_main_menu(bot: Bot):
     main_menu_commands = [
-        BotCommand(command="/start",
+        BotCommand(command="start",
                    description="Начать заново"),
-        BotCommand(command="/help",
+        BotCommand(command="help",
                    description="Справка по работе бота"),
-        BotCommand(command="/profile",
-                   description="Кнопочное меню"),
-        BotCommand(command="/models",
-                   description="Кнопочное меню"),
-        BotCommand(command="/reset",
+        BotCommand(command="profile",
+                   description="Баланс и статус премиума"),
+        BotCommand(command="models",
+                   description="Выбор моделей генерации"),
+        BotCommand(command="reset",
                    description="Сбросить контекст"),
-        BotCommand(command="/admin",
+        BotCommand(command="admin",
                    description="Меню администратора (только для админов)"),
     ]
     await bot.set_my_commands(main_menu_commands)

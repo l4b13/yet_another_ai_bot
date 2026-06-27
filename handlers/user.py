@@ -24,7 +24,7 @@ from services.telegram_media import (
     message_has_video,
 )
 from static.texts import (
-    PRIVATE, START_RESPONSE, HELP_RESPONSE, RESET_RESPONSE
+    PRIVATE, START_RESPONSE, HELP_RESPONSE, PROFILE_RESPONSE, RESET_RESPONSE
 )
 
 from filters.chat_type import ChatTypeFilter
@@ -76,14 +76,9 @@ async def process_start_command(
 
 
 @router.message(Command(commands="help"))
-async def process_contacts_command(
-    message: types.Message
-):
+async def process_help_command(message: types.Message):
     response = Text(HELP_RESPONSE)
-    await message.answer(
-        **response.as_kwargs(),
-        reply_markup=None
-    )
+    await message.answer(**response.as_kwargs())
 
 
 @router.message(Command(commands="reset"))
@@ -102,14 +97,22 @@ async def process_reset_command(
 
 
 @router.message(Command(commands="profile"))
-async def process_profile_command(
-    message: types.Message, db: Database, state: FSMContext
-):
-    response = Text(HELP_RESPONSE)
-    await message.answer(
-        **response.as_kwargs(),
-        reply_markup=None
-    )
+async def process_profile_command(message: types.Message, db: Database):
+    async with db.get_session() as db_session:
+        user = await ChatService.get_user(
+            db_session=db_session,
+            chat_id=message.chat.id,
+            username=message.chat.username,
+            fullname=message.chat.full_name,
+        )
+        premium_status = "активен ⭐" if user.premium else "не активен"
+        response = Text(
+            PROFILE_RESPONSE.format(
+                balance=user.balance,
+                premium_status=premium_status,
+            )
+        )
+        await message.answer(**response.as_kwargs())
 
 
 @router.message(Command(commands="models"))
@@ -522,7 +525,7 @@ async def process_message(
 
             photo_url = task_result.get("photo_url")
             photo_bytes = task_result.get("photo_bytes")
-            video_url = task_result.get("video_url")
+            video_bytes = task_result.get("video_bytes")
             cap = (reply_plain[:1024] if reply_plain else None) or None
 
             if photo_url:
@@ -535,9 +538,11 @@ async def process_message(
                     caption=cap,
                     parse_mode=None,
                 )
-            elif video_url:
+            elif video_bytes:
                 await message.answer_video(
-                    video_url, caption=cap, parse_mode=None
+                    BufferedInputFile(video_bytes, filename="video.mp4"),
+                    caption=cap,
+                    parse_mode=None,
                 )
             else:
                 await message.answer(text=reply_plain)

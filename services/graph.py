@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import re
@@ -21,8 +22,10 @@ from static.prompts import (
     CLASSIFY_INSTRUCTION,
     CLASSIFY_JSON_TEMPLATE,
     CLASSIFY_PROMPT,
+    IMAGE_EXPAND_CONTEXT_PROMPT,
     MEMORY_CONTEXT_PROMPT,
     SYSTEM_PROMPT,
+    VIDEO_EXPAND_CONTEXT_PROMPT,
     VISION_EXPAND_IMAGE_PROMPT,
     VISION_EXPAND_VIDEO_PROMPT,
 )
@@ -119,6 +122,7 @@ class GraphState(TypedDict, total=False):
     photo_url: str
     photo_bytes: bytes
     video_url: str
+    video_bytes: bytes
     chat_id: int
     conversation_id: str
     memory_context: str
@@ -220,6 +224,28 @@ async def _enrich_prompt_for_video(
     except Exception:
         logger.exception("vision enrich video failed")
         return user_prompt or "video from references"
+
+
+async def _expand_media_prompt_from_context(
+    llm: ChatOpenAI,
+    messages: list[AnyMessage],
+    user_prompt: str,
+    state: GraphState,
+    *,
+    instruction: str,
+) -> str:
+    try:
+        out = await llm.ainvoke(
+            _memory_system_messages(state)
+            + [SystemMessage(content=instruction)]
+            + messages[:-1]
+            + [HumanMessage(content=user_prompt or " ")]
+        )
+        expanded = message_text(out.content).strip()
+        return expanded or user_prompt
+    except Exception:
+        logger.exception("media prompt expand from context failed")
+        return user_prompt
 
 
 async def classify(state: GraphState):
@@ -341,6 +367,14 @@ async def generate_image(state: GraphState):
     user_text, refs = extract_text_and_ref_b64_from_last_human(messages)
     if refs:
         prompt = await _enrich_prompt_for_image(system_llm, user_text, refs)
+    elif len(messages) > 1:
+        prompt = await _expand_media_prompt_from_context(
+            system_llm,
+            messages,
+            user_text,
+            state,
+            instruction=IMAGE_EXPAND_CONTEXT_PROMPT,
+        )
     else:
         prompt = user_text
 
@@ -352,6 +386,7 @@ async def generate_image(state: GraphState):
         }
 
     img_bytes, img_url, err = await request_image(prompt, image_model.name)
+    logger.info("Image generation prompt (%s chars): %s", len(prompt), prompt[:300])
 
     if err:
         return {"result": AIMessage(content=f"Не удалось создать изображение: {err}")}
@@ -391,6 +426,14 @@ async def generate_video(state: GraphState):
     user_text, refs = extract_text_and_ref_b64_from_last_human(messages)
     if refs:
         prompt = await _enrich_prompt_for_video(system_llm, user_text, refs)
+    elif len(messages) > 1:
+        prompt = await _expand_media_prompt_from_context(
+            system_llm,
+            messages,
+            user_text,
+            state,
+            instruction=VIDEO_EXPAND_CONTEXT_PROMPT,
+        )
     else:
         prompt = user_text
 
@@ -401,7 +444,19 @@ async def generate_video(state: GraphState):
             )
         }
 
-    video_url, err = await request_video(prompt, video_model.name)
+    reference_image: bytes | None = None
+    if refs:
+        try:
+            reference_image = base64.b64decode(refs[0])
+        except Exception:
+            logger.exception("failed to decode video reference image")
+
+    video_bytes, err = await request_video(
+        prompt,
+        video_model.name,
+        reference_image=reference_image,
+    )
+    logger.info("Video generation prompt (%s chars): %s", len(prompt), prompt[:300])
 
     if err:
         return {"result": AIMessage(content=f"Не удалось создать видео: {err}")}
@@ -410,7 +465,7 @@ async def generate_video(state: GraphState):
     caption = (cap_src[:900] + "…") if len(cap_src) > 900 else cap_src
     return {
         "result": AIMessage(content=caption or "Видео готово."),
-        "video_url": video_url,
+        "video_bytes": video_bytes,
         "price": float(video_model.price),
     }
 

@@ -27,6 +27,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, nullable=True)
     fullname: Mapped[str] = mapped_column(String, nullable=True)
     balance: Mapped[int] = mapped_column(Integer, default=0)
+    premium: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     is_admin: Mapped[bool] = mapped_column(
         Boolean, nullable=True, default=False
     )

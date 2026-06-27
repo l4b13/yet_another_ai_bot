@@ -33,8 +33,11 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str
     OPENAI_API_KEY: str
     OPENAI_IMAGES_PATH: str = "/images/generations"
-    OPENAI_VIDEOS_PATH: str = "/videos/generations"
+    OPENAI_VIDEOS_PATH: str = "/videos"
     OPENAI_IMAGE_SIZE: str = "1024x1024"
+    OPENAI_VIDEO_SIZE: str = "1280x720"
+    OPENAI_VIDEO_SECONDS: str = "8"
+    OPENAI_VIDEO_POLL_INTERVAL: float = 10.0
 
     MEDIA_GROUP_DEBOUNCE_SEC: float = 0.85
     VIDEO_MAX_BYTES: int = 20 * 1024 * 1024
